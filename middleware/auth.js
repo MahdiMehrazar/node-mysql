@@ -1,21 +1,28 @@
-const jwt = require("jsonwebtoken");
+const db = require("../config/database");
 
-const config = process.env;
+function userExists(req, res, next) {
+  db.query(
+    "Select * from users where username=? ",
+    [req.body.username],
+    function (error, results, fields) {
+      if (error) {
+        res.send("Error");
+      } else if (results.length > 0) {
+        res.send("User already exists");
+      } else {
+        next();
+      }
+    }
+  );
+}
 
-const verifyToken = (req, res, next) => {
-  const token =
-    req.body.token || req.query.token || req.headers["x-access-token"];
-
-  if (!token) {
-    return res.status(403).send("A token is required for authentication");
+function isAuth(req, res, next) {
+  if (req.isAuthenticated()) {
+    next();
+  } else {
+    res.send("You are not authenticated. Please login first.");
   }
-  try {
-    const decoded = jwt.verify(token, config.TOKEN_KEY);
-    req.user = decoded;
-  } catch (err) {
-    return res.status(401).send("Invalid Token");
-  }
-  return next();
-};
+}
 
-module.exports = verifyToken;
+exports.userExists = userExists;
+exports.isAuth = isAuth;
