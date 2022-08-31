@@ -1,6 +1,9 @@
 const crypto = require("crypto");
 const LocalStrategy = require("passport-local").Strategy;
 const passport = require("passport");
+// Winston logger
+const logger = require('../utils/logger');
+
 
 // importing MySQL db
 const db = require("../config/database");
@@ -14,6 +17,7 @@ exports.createDb = async (req, res) => {
       throw err;
     }
 
+    logger.info(`database created`);
     res.send("Database created");
   });
 };
@@ -27,7 +31,8 @@ exports.createUsers = async (req, res) => {
     if (err) {
       throw err;
     }
-
+  
+    logger.info(`users table created`);
     res.send("Users table created");
   });
 };
@@ -43,6 +48,7 @@ exports.loginFailure = async (req, res) => {
 };
 
 exports.loginSuccess = async (req, res) => {
+  logger.info(`user ${req.user.username} logged in successfully`);
   res.send("Logged in successfully!");
 };
 
@@ -58,8 +64,10 @@ exports.register = async (req, res) => {
     [req.body.username, hash, salt],
     function (error, results, fields) {
       if (error) {
+        logger.error(`user registration failure ${req.body.username}`);
         res.send("Error registering");
       } else {
+        logger.info(`new user registered ${req.body.username}`);
         res.send("Successfully Registered");
       }
     }
