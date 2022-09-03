@@ -15,7 +15,7 @@ const app = express();
 app.use(
   session({
     key: process.env.SESSION_NAME,
-    secret: "session_cookie_secret",
+    secret: process.env.SESSION_SECRET,
     store: new MySQLStore({
       host: process.env.SQL_HOST,
       port: process.env.SQL_PORT,
