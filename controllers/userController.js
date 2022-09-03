@@ -2,15 +2,17 @@ const crypto = require("crypto");
 const LocalStrategy = require("passport-local").Strategy;
 const passport = require("passport");
 // Winston logger
-const logger = require('../utils/logger');
-
+const logger = require("../utils/logger");
 
 // importing MySQL db
-const db = require("../config/database");
+const db = require("../config/database").mySqlDb;
+
+// importing sequelize model
+const Users = require("../models/book.model").Users;
 
 // Create MySQL database
 exports.createDb = async (req, res) => {
-  let sql = "CREATE DATABASE nodesql";
+  let sql = "CREATE DATABASE IF NOT EXISTS nodesql";
 
   db.query(sql, (err) => {
     if (err) {
@@ -22,25 +24,8 @@ exports.createDb = async (req, res) => {
   });
 };
 
-// Create users table
-exports.createUsers = async (req, res) => {
-  let sql =
-    "CREATE TABLE users(id INT NOT NULL AUTO_INCREMENT, username VARCHAR(45) NOT NULL, hash VARCHAR(200) NOT NULL, salt VARCHAR(255) NOT NULL, isAdmin TINYINT(4) NOT NULL, PRIMARY KEY (id))";
-
-  db.query(sql, (err) => {
-    if (err) {
-      throw err;
-    }
-  
-    logger.info(`users table created`);
-    res.send("Users table created");
-  });
-};
-
 exports.welcome = async (req, res) => {
-  res
-    .status(200)
-    .send(`Welcome ${req.user.username}`);
+  res.status(200).send(`Welcome ${req.user.username}`);
 };
 
 exports.loginFailure = async (req, res) => {
@@ -53,25 +38,26 @@ exports.loginSuccess = async (req, res) => {
 };
 
 exports.register = async (req, res) => {
-  console.log(req);
   const saltHash = genPassword(req.body.password);
-  console.log(saltHash);
   const salt = saltHash.salt;
   const hash = saltHash.hash;
 
-  db.query(
-    "Insert into users(username,hash,salt,isAdmin) values(?,?,?,0) ",
-    [req.body.username, hash, salt],
-    function (error, results, fields) {
-      if (error) {
-        logger.error(`user registration failure ${req.body.username}`);
-        res.send("Error registering");
-      } else {
-        logger.info(`new user registered ${req.body.username}`);
-        res.send("Successfully Registered");
-      }
-    }
-  );
+  Users.create({
+    username: req.body.username,
+    hash: hash,
+    salt: salt,
+    isAdmin: 0,
+  })
+    .then(() => {
+      logger.info(`new user registered ${req.body.username}`);
+      res.send("Successfully Registered");
+    })
+    .catch((error) => {
+      logger.error(
+        `user registration failure ${req.body.username} with error ${error}`
+      );
+      res.send("Error registering");
+    });
 };
 
 exports.logout = async (req, res) => {
@@ -85,29 +71,36 @@ exports.logout = async (req, res) => {
 
 /*Passport JS*/
 const verifyCallback = (username, password, done) => {
-  db.query(
-    "SELECT * FROM users WHERE username = ? ",
-    [username],
-    function (error, results, fields) {
-      if (error) return done(error);
-
+  Users.findOne({
+    where: {
+      username: username,
+    },
+  })
+    .then((results) => {
       if (results.length == 0) {
         return done(null, false);
       }
-      const isValid = validPassword(password, results[0].hash, results[0].salt);
+
+      const isValid = validPassword(
+        password,
+        results.dataValues.hash,
+        results.dataValues.salt
+      );
       user = {
-        id: results[0].id,
-        username: results[0].username,
-        hash: results[0].hash,
-        salt: results[0].salt,
+        id: results.dataValues.id,
+        username: results.dataValues.username,
+        hash: results.dataValues.hash,
+        salt: results.dataValues.salt,
       };
       if (isValid) {
         return done(null, user);
       } else {
         return done(null, false);
       }
-    }
-  );
+    })
+    .catch((error) => {
+      return done(error);
+    });
 };
 
 const customFields = {
@@ -124,13 +117,17 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser(function (userId, done) {
-  db.query(
-    "SELECT * FROM users where id = ?",
-    [userId],
-    function (error, results) {
-      done(null, results[0]);
-    }
-  );
+  Users.findOne({
+    where: {
+      id: userId,
+    },
+  })
+    .then((results) => {
+      done(null, results.dataValues);
+    })
+    .catch((error) => {
+      error(error);
+    });
 });
 
 function validPassword(password, hash, salt) {

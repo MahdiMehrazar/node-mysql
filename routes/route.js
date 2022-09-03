@@ -6,8 +6,6 @@ const passport = require("passport");
 
 router.post("/createdb", userController.createDb);
 
-router.post("/createusers", userController.createUsers);
-
 router.post("/register", auth.userExists, userController.register);
 
 router.get("/login-failure", userController.loginFailure);

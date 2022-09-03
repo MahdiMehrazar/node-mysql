@@ -1,19 +1,24 @@
-const db = require("../config/database");
+const db = require("../config/database").mySqlDb;
+
+// importing sequelize model
+const Users = require("../models/book.model").Users;
 
 function userExists(req, res, next) {
-  db.query(
-    "Select * from users where username=? ",
-    [req.body.username],
-    function (error, results, fields) {
-      if (error) {
-        res.send("Error");
-      } else if (results.length > 0) {
+  Users.findOne({
+    where: {
+      username: req.body.username,
+    },
+  })
+    .then((results) => {
+      if (results) {
         res.send("User already exists");
       } else {
         next();
       }
-    }
-  );
+    })
+    .catch((error) => {
+      res.send("Error");
+    });
 }
 
 function isAuth(req, res, next) {
