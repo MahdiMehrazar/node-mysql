@@ -7,12 +7,16 @@ Needs a local .env file with the following parameters
 
 API_PORT = 4001
 
-SQL_HOST: localhost
+SQL_HOST: <localhost>
 
-SQL_USER: username
+SQL_USER: <username>
 
-SQL_PASS: password
+SQL_PASS: <password>
 
-SQL_DATABASE: dbname
+SQL_DATABASE: <dbname>
 
-TOKEN_KEY = token key
+TOKEN_KEY = <token key>
+
+SESSION_NAME = <session name>
+
+SESSION_SECRET = <session secret>
